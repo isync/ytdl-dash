@@ -3,22 +3,32 @@
 
 if(!isset($argv[1])) die("Usage: php me.php <video id>\n");
 
-$tmp = "/tmp/".posix_getpid();
+
 $vid = $argv[1];
 
 hellohello($vid);
 
-echo "Making $tmp/\n";
-mkdir($tmp);
-posix_mkfifo($tmp."/audio", 0600);
-posix_mkfifo($tmp."/video", 0600);
 
-download($vid, "out.mkv");
+$tmp = maketemp();
 
-echo "Cleaning $tmp/\n";
-rmstar($tmp);
-rmdir($tmp);
+download($vid, $tmp);
 
+deltemp($tmp);
+
+function maketemp(){
+	$tmp = tempnam("/tmp", "ytdl-");
+	echo "Making $tmp/\n";
+	unlink($tmp);
+	mkdir($tmp);
+	posix_mkfifo($tmp."/audio", 0600);
+	posix_mkfifo($tmp."/video", 0600);
+	return $tmp;
+}
+function deltemp($dir){
+	echo "Deleting $dir/\n";
+	rmstar($dir);
+	rmdir($dir);
+}
 function hellohello($vid){
 	echo "|".str_repeat("=",70)."|\n";
 	echo "|  $vid\n";
@@ -32,14 +42,27 @@ function rmstar($dir){
 		unlink("$dir/$f");
 	}
 }
+function extreplace($name, $ext){
+	$pos = strrpos($name, ".");
+	if($pos === false) return "$name.$ext";
+	return substr($name, 0, $pos).".$ext";
+}
 
-function download($vid,$out){
-	global $tmp;
+function download($vid, $tmp){
 	$temp = escapeshellarg($tmp);
 	$url = escapeshellarg($vid);
 	$audio_out = escapeshellarg($tmp."/audio");
 	$video_out = escapeshellarg($tmp."/video");
 
+	echo "Getting filename for $vid:\n";
+	$cmd = "(cd $temp; youtube-dl --get-filename $url)";
+	$out = trim(`$cmd`);
+	$out = extreplace($out, "mkv");
+
+	if(file_exists($out)){
+		echo "Cannot download, file already exists.\n";
+		return;
+	}
 
 	echo "Getting formats for $vid:\n";
 	$cmd = "(cd $temp; youtube-dl -F $url | grep DASH | sed 's/\t\t*/ /g' | cut -d ' ' -f 1)";
@@ -56,7 +79,7 @@ function download($vid,$out){
 	else listfmt($vid);
 
 	$video = 0;
-	if(isset($fmt[138])){ $video=138;die("$vid is 1440p?\n");} // 1440p DASH?
+	if(isset($fmt[138])){ $video=138; echo "Yay for >1080p content!\n"; } // 1440p DASH?
 	else if(isset($fmt[137])) $video=137;		// 1080p DASH
 	else if(isset($fmt[136])) $video=136;		// 720p DASH
 	else if(isset($fmt[135])) $video=135;		// 480p DASH
@@ -64,21 +87,16 @@ function download($vid,$out){
 	else if(isset($fmt[133])) $video=133;		// 480p DASH
 	else listfmt($vid);
 
-	
 	$cmd = "(cd $temp; youtube-dl $url -f $video -o $video_out & youtube-dl $url -f $audio -o $audio_out & ) 1>&2";
 	`$cmd`;
-	
-	// mux!
-	if(!file_exists("$done/$out")){
-		avconv("$tmp/audio", "$tmp/video", $out);
-	}
+	avconv("$tmp/audio", "$tmp/video", $out);
 }
 
 function avconv($aud,$vid,$out){
 	$aud = escapeshellarg($aud);
 	$vid = escapeshellarg($vid);
 	$out = escapeshellarg($out);
-	echo ($cmd = "avconv -i $aud -i $vid -codec copy $out 1>&2")."\n";
+	echo ($cmd = "avconv -i $aud -i $vid -c copy $out 1>&2")."\n";
 	`$cmd`;
 }
 function listfmt($vid){
