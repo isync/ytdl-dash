@@ -6,7 +6,8 @@ youtube-dl wrapper for downloading dash movies. Requires php, youtube-dl and avc
 Short:
 * copy ytdl.php to /usr/local/bin/ytdl and make sure it has correct permissions (root:root, 755)
 * Path is optional if you wondered
-Long:
+
+Slow:
 * apt-get install php5-cli youtube-dl ffmpeg
 * Download this
 * sudo cp ytdl.php /usr/local/bin/ytdl
