@@ -3,17 +3,16 @@
 
 if(!isset($argv[1])) die("Usage: php me.php <video id>\n");
 
+array_shift($argv);
+foreach ($argv as $vid) {
+	hellohello($vid);	// echo status/current video to cli
 
-$vid = $argv[1];
+	$tmp = maketemp();	// make temp dir
 
-hellohello($vid);
+	download($vid, $tmp);	// dl and run avconv
 
-
-$tmp = maketemp();
-
-download($vid, $tmp);
-
-deltemp($tmp);
+	deltemp($tmp);		// del temp dir
+}
 
 function maketemp(){
 	$tmp = tempnam("/tmp", "ytdl-");
