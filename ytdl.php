@@ -1,7 +1,7 @@
 #!/usr/bin/php -q
 <?php
 
-if(!isset($argv[1])) die("Usage: php me.php <video id>\n");
+if(!isset($argv[1])) die("Usage: php ytdl.php <video id> [, <video id>]\n");
 
 array_shift($argv);
 foreach ($argv as $vid) {
